@@ -1,8 +1,8 @@
-"""COKA - CALL OF KIMS ARMY  v1.0.0.1
+"""COKA - CALL OF KIMS ARMY  v1.0.0.2
 An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE AI TRAINING (bot matches).
 ©2026 EX Inc./HYPERION DIGITAL ©2026"""
 import os, sys, json, math, random, time, threading, traceback
-VERSION = "1.0.0.1"
+VERSION = "1.0.0.2"
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 def A(*p):
     from panda3d.core import Filename
@@ -282,7 +282,6 @@ class App(ShowBase):
         self.accept("window-event", self.on_window)
         self.set_volume()
         self.upd_text = None; threading.Thread(target=self.check_update, daemon=True).start()
-        self.ambient = self.sounds["wind"][0]; self.ambient.set_loop(True); self.ambient.set_volume(0.25); self.ambient.play()
         self.smoke_t = 0; self.intro = None; self.flycam = None
         self.bars = [DirectFrame(parent=self.render2d, frameColor=(0, 0, 0, 1), frameSize=(-1, 1, 0.84, 1)),
                      DirectFrame(parent=self.render2d, frameColor=(0, 0, 0, 1), frameSize=(-1, 1, -1, -0.84))]
@@ -384,7 +383,7 @@ void main() {
 
     # ------------------------------------------------------------------------------------------- sound
     def load_sounds(self):
-        for k in ("pistol", "smg", "shotgun", "hit", "swing", "empty", "click", "checkpoint", "win", "wind", "beep", "go", "crash", "switch"):
+        for k in ("pistol", "smg", "shotgun", "hit", "swing", "empty", "click", "checkpoint", "win", "beep", "go", "crash", "switch"):
             self.sounds[k] = [self.loader.load_sfx(A("sfx", k + ".wav")) for _ in range(6 if k in ("smg", "pistol", "shotgun", "hit") else 2)]
         self.sidx = {}
 
