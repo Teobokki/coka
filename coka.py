@@ -1,8 +1,8 @@
-"""COKA - CALL OF KIMS ARMY  v1.0.0
+"""COKA - CALL OF KIMS ARMY  v1.0.0.1
 An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE AI TRAINING (bot matches).
 ©2026 EX Inc./HYPERION DIGITAL ©2026"""
 import os, sys, json, math, random, time, threading, traceback
-VERSION = "1.0.0"
+VERSION = "1.0.0.1"
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 def A(*p):
     from panda3d.core import Filename
@@ -17,6 +17,30 @@ def log(m):
     except Exception: pass
 
 import coka_data as D
+import ssl
+
+def _fallback_ssl():
+    """certifi's CA bundle + every Windows ROOT/CA certificate. Verifying (CERT_REQUIRED, hostname checked)."""
+    c = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    try:
+        import certifi; c.load_verify_locations(cafile=certifi.where())
+    except Exception: c.load_default_certs()
+    for st in ("ROOT", "CA") if hasattr(ssl, "enum_certificates") else ():
+        try:
+            for der, enc, tr in ssl.enum_certificates(st):
+                if enc == "x509_asn" and (tr is True or "1.3.6.1.5.5.7.3.1" in tr):
+                    try: c.load_verify_locations(cadata=der)
+                    except Exception: pass
+        except Exception: pass
+    return c
+# 1.0.0.1: antivirus / proxy HTTPS scanning roots live only in the Windows store -> verify against it (truststore).
+# The fallback context is built BEFORE truststore patches ssl.SSLContext.
+try: _SSL_FB = _fallback_ssl()
+except Exception: _SSL_FB = None
+try:
+    import truststore; truststore.inject_into_ssl(); _SSL_TS = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+except Exception: _SSL_TS = None
+def _ssl_contexts(): return [c for c in (_SSL_TS, _SSL_FB) if c is not None] or [ssl.create_default_context()]
 DEFAULT = dict(xp=0, primary="km9", attach={}, camo="desert", perks=["quickhands", "marathon"], done=[], range_best=0,
                settings=dict(gfx="", sens=1.0, fov=80, vol=0.8, voice=1.0, fullscreen=False, diff=1, mode="tdm"))
 def load_profile():
@@ -28,11 +52,33 @@ def load_profile():
     return p
 
 PROFILE = load_profile(); ST = PROFILE["settings"]; TEST = os.environ.get("COKA_TEST", "")
+
+def _win_size():
+    """1.0.0.1: per-monitor DPI aware (no blurry bitmap-stretching at 125-150 %% scaling, which made the 1280x720 window
+    larger than the screen) and a 16:9 window that fits the monitor's work area (taskbar excluded)."""
+    w, h = 1280, 720
+    if os.name == "nt":
+        try:
+            import ctypes
+            try: ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            except Exception: ctypes.windll.user32.SetProcessDPIAware()
+            class RECT(ctypes.Structure): _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+            rc = RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(rc), 0):
+                aw, ah = rc.r - rc.l, rc.b - rc.t - 40          # minus the title bar
+                k = min(0.92 * aw / 16, 0.92 * ah / 9, 100)        # at most 1600x900
+                w, h = max(800, int(k * 16)) // 2 * 2, max(450, int(k * 9)) // 2 * 2
+        except Exception: pass
+    e = os.environ.get("COKA_WIN")
+    if e: w, h = (int(v) for v in e.lower().split("x"))
+    return w, h
+WIN_W, WIN_H = _win_size()
 from panda3d.core import loadPrcFileData
-loadPrcFileData("", "window-title COKA - CALL OF KIMS ARMY\nwin-size 1280 720\nsync-video %d\nframebuffer-multisample 0\ndepth-bits 24\ntextures-power-2 none\n"
+loadPrcFileData("", "window-title COKA - CALL OF KIMS ARMY\nwin-size %d %d\nsync-video %d\nframebuffer-multisample 0\ndepth-bits 24\ntextures-power-2 none\n"
                 "texture-minfilter linear-mipmap-linear\ntexture-magfilter linear\ntexture-anisotropic-degree %d\naudio-library-name p3openal_audio\n"
-                "icon-filename %s\ndefault-model-extension .bam\nnotify-level-display error\n" % (0 if TEST else 1, 16 if ST.get("gfx") == "RTX" else 8, A("icon.ico")))
+                "icon-filename %s\ndefault-model-extension .bam\nnotify-level-display error\n" % (WIN_W, WIN_H, 0 if TEST else 1, 16 if ST.get("gfx") == "RTX" else 8, A("icon.ico")))
 if os.environ.get("COKA_NOAUDIO"): loadPrcFileData("", "audio-library-name null")
+loadPrcFileData("", "dpi-aware 1")
 if ST.get("fullscreen") and not TEST: loadPrcFileData("", "fullscreen 1")
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import (Vec3, Vec4, Point3, TextNode, Texture, SamplerState, TransparencyAttrib, CardMaker, NodePath, Camera, PerspectiveLens,
@@ -108,7 +154,7 @@ class Hud:
         self.bar = DirectFrame(parent=self.root, frameColor=(0, 0, 0, 0.6), frameSize=(-0.25, 0.25, -0.012, 0.012), pos=(0, 0, -0.3))
         self.barf = DirectFrame(parent=self.bar, frameColor=GOLD, frameSize=(-0.25, -0.25, -0.012, 0.012)); self.bar.hide()
         self.scope = OnscreenImage(image=app.scope_tex, parent=a.render2d, scale=(1, 1, 1)); self.scope.set_transparency(TransparencyAttrib.M_alpha); self.scope.hide()
-        self.sb = DirectFrame(parent=self.root, frameColor=(0.04, 0.04, 0.035, 0.88), frameSize=(-0.95, 0.95, -0.62, 0.62)); self.sb.hide()
+        self.sb = DirectFrame(parent=self.root, frameColor=(0.04, 0.04, 0.035, 0.88), frameSize=(-0.95, 0.95, -0.62, 0.62)); self.sb.hide(); self.sb.set_scale(0.78)
         self.sbt = [OnscreenText(parent=self.sb, scale=0.036, pos=(x, 0.53), align=al, fg=WHITE, font=fp, mayChange=True)
                     for x, al in ((-0.88, TextNode.A_left), (0.25, TextNode.A_right), (0.45, TextNode.A_right), (0.65, TextNode.A_right), (0.88, TextNode.A_right))]
 
@@ -232,7 +278,8 @@ class App(ShowBase):
         self.keys_pressed = set()
         for k in ("space", "c", "control", "r", "g", "v", "q", "f", "l", "1", "2", "wheel_up", "wheel_down", "mouse1", "escape", "enter", "tab", "tab-up"):
             self.accept(k, self.on_key, [k])
-        self.taskMgr.add(self.loop, "loop")
+        self.taskMgr.add(self.loop, "loop"); self.taskMgr.add(self.fit_ui, "fit_ui", sort=45)
+        self.accept("window-event", self.on_window)
         self.set_volume()
         self.upd_text = None; threading.Thread(target=self.check_update, daemon=True).start()
         self.ambient = self.sounds["wind"][0]; self.ambient.set_loop(True); self.ambient.set_volume(0.25); self.ambient.play()
@@ -421,6 +468,7 @@ void main() {
 
     # ------------------------------------------------------------------------------------------- input / loop
     def on_key(self, k):
+        if k in ("wheel_up", "wheel_down") and self.ui is not None: self.menu_wheel(-1 if k == "wheel_up" else 1); return
         if k == "tab": self.tab_down = True; return
         if k == "tab-up": self.tab_down = False; return
         if k == "escape":
@@ -567,7 +615,14 @@ void main() {
         try:
             import urllib.request
             u = "https://raw.githubusercontent.com/Teobokki/coka/main/latest.json"
-            with urllib.request.urlopen(u, timeout=6) as r: j = json.loads(r.read().decode())
+            j = None
+            for c in _ssl_contexts():      # Windows store first, then certifi + Windows ROOT/CA; verification always on
+                try:
+                    with urllib.request.urlopen(u, timeout=6, context=c) as r: j = json.loads(r.read().decode()); break
+                except Exception as e:
+                    if "CERTIFICATE_VERIFY_FAILED" not in str(e) and "chain policy" not in str(e).lower(): raise
+                    log("update check: certificate not trusted (%s)" % e)
+            if j is None: return
             if tuple(int(x) for x in j["version"].split(".")) > tuple(int(x) for x in VERSION.split(".")): self.upd_text = "UPDATE AVAILABLE: v%s  -  get it in HYPERION DIGITAL EX" % j["version"]
         except Exception: pass
 
@@ -576,22 +631,66 @@ void main() {
         if self.ui: self.ui.remove_node()
         self.ui = None; self.ui_back = None; self.ui_enter = None
 
+    # 1.0.0.1 menu layout. aspect2d is "window height = 2 units", so the UI follows the window height. Menu content goes
+    # into its own node (self.cn, the old design units) right of the poster, scaled by UI_K (~0.7x of 1.0.0). fit_ui()
+    # measures the real bounds every time a menu is built and shrinks it further / turns on mouse-wheel scrolling, so
+    # nothing is cut off at any resolution or aspect (4:3 ... 32:9), windowed or DPI-scaled. Menus rebuild on resize.
+    UI_K = 0.7
+
+    def panel_left(self):
+        ar = self.getAspectRatio(); return -ar + max(0.55, min(1.9, 2 * ar - 1.7))
+
+    def content(self, x0, center=False):
+        self.cn = self.ui.attach_new_node("content"); self.cn.set_pos(x0, 0, 0); self.cn.set_scale(self.UI_K)
+        self.cn_center = center; self.cn_scroll = 0.0; self.cn_range = (0, 0); self.fit_pending = True
+        return self.cn
+
+    def fit_ui(self, task):
+        cn = getattr(self, "cn", None)
+        if getattr(self, "fit_pending", False) and self.ui is not None and cn is not None and not cn.is_empty():
+            self.fit_pending = False; ar = self.getAspectRatio(); k = self.UI_K; cn.set_scale(k); cn.set_z(0)
+            b = cn.get_tight_bounds(self.aspect2d)
+            if b:
+                lo, hi = b; x0 = cn.get_x(); f = 1.0
+                if hi[0] > ar - 0.04: f = min(f, (ar - 0.04 - x0) / max(0.01, hi[0] - x0))
+                if self.cn_center and lo[0] < -ar + 0.04: f = min(f, (ar - 0.04 + x0) / max(0.01, x0 - lo[0]))
+                cn.set_scale(k * max(f, 0.55))
+                lo, hi = cn.get_tight_bounds(self.aspect2d); top, bot = 0.92, -0.9
+                if hi[2] - lo[2] <= top - bot:
+                    cn.set_z(max(0.0, bot - lo[2]) - max(0.0, hi[2] - top))
+                else:                                                   # taller than the window: scroll with the wheel
+                    cn.set_z(top - hi[2]); self.cn_range = (cn.get_z(), cn.get_z() + (bot - lo[2]) - (top - hi[2]))
+        return task.cont
+
+    def menu_wheel(self, d):
+        cn = getattr(self, "cn", None)
+        if self.ui is not None and cn is not None and not cn.is_empty() and self.cn_range[1] > self.cn_range[0]:
+            cn.set_z(max(self.cn_range[0], min(self.cn_range[1], cn.get_z() + d * 0.12)))
+
+    def on_window(self, win=None):
+        self.windowEvent(win)                     # keep ShowBase's own handler (aspect ratio, close)
+        ar = round(self.getAspectRatio(), 3)
+        if ar != getattr(self, "_menu_ar", ar) and self.ui is not None and getattr(self, "_menu_fn", None):
+            self._menu_fn()
+        self._menu_ar = ar
+
     def new_ui(self, poster="left", dim=0.55):
-        self.clear_ui(); self.ui = self.aspect2d.attach_new_node("ui"); ar = self.getAspectRatio()
+        self.clear_ui(); self.ui = self.aspect2d.attach_new_node("ui"); ar = self.getAspectRatio(); pl = self.panel_left()
+        self._menu_ar = round(ar, 3)
         if poster == "world":      # live camp behind a translucent panel (briefings)
-            DirectFrame(parent=self.ui, frameColor=(0.03, 0.028, 0.024, 0.8), frameSize=(-ar + 1.9, ar + 0.1, -1.1, 1.1))
-            for i in range(24): DirectFrame(parent=self.ui, frameColor=(0.03, 0.028, 0.024, 0.033), frameSize=(-ar + 1.0 + i * 0.0375, -ar + 1.9, -1.1, 1.1))
+            DirectFrame(parent=self.ui, frameColor=(0.03, 0.028, 0.024, 0.8), frameSize=(pl, ar + 0.1, -1.1, 1.1))
+            for i in range(24): DirectFrame(parent=self.ui, frameColor=(0.03, 0.028, 0.024, 0.033), frameSize=(pl - 0.9 + i * 0.0375, pl, -1.1, 1.1))
             OnscreenText(parent=self.ui, text=D.COPYRIGHT, pos=(ar - 0.05, -0.96), scale=0.03, fg=DIM, align=TextNode.A_right, font=self.fontp)
-            return self.ui
+            return self.content(pl + 0.12)
         self.flycam = None
         DirectFrame(parent=self.ui, frameColor=(0.05, 0.045, 0.04, 1), frameSize=(-ar - 0.1, ar + 0.1, -1.1, 1.1))
-        x = 0 if poster == "center" else -ar + 1.0
+        x = 0 if poster == "center" else pl - 0.9
         im = OnscreenImage(image=A("menu_bg.jpg"), parent=self.ui, scale=(1, 1, 1), pos=(x, 0, 0))
         if poster != "center":
-            DirectFrame(parent=self.ui, frameColor=(0.04, 0.035, 0.03, 0.9), frameSize=(-ar + 1.9, ar + 0.1, -1.1, 1.1))
-            for i in range(10): DirectFrame(parent=self.ui, frameColor=(0.04, 0.035, 0.03, 0.09 * i), frameSize=(-ar + 1.0 + i * 0.09, -ar + 1.09 + i * 0.09, -1.1, 1.1))
+            DirectFrame(parent=self.ui, frameColor=(0.04, 0.035, 0.03, 0.9), frameSize=(pl, ar + 0.1, -1.1, 1.1))
+            for i in range(10): DirectFrame(parent=self.ui, frameColor=(0.04, 0.035, 0.03, 0.09 * i), frameSize=(pl - 0.9 + i * 0.09, pl - 0.81 + i * 0.09, -1.1, 1.1))
         OnscreenText(parent=self.ui, text=D.COPYRIGHT, pos=(ar - 0.05, -0.96), scale=0.03, fg=DIM, align=TextNode.A_right, font=self.fontp)
-        return self.ui
+        return self.ui if poster == "center" else self.content(pl + 0.12)
 
     def btn(self, parent, text, cmd, pos, w=0.62, scale=0.055, active=True, sel=False):
         b = DirectButton(parent=parent, text=text, command=(lambda: (self.sfx("click", 0.5), cmd())) if active else None, pos=pos, scale=scale, text_font=self.font,
@@ -601,6 +700,7 @@ void main() {
         return b
 
     def title_screen(self):
+        self._menu_fn = self.title_screen
         ui = self.new_ui("center"); ar = self.getAspectRatio()
         t = OnscreenText(parent=ui, text="PRESS ENTER OR CLICK TO START", pos=(0, -0.86), scale=0.055, fg=WHITE, font=self.font, shadow=(0, 0, 0, 1))
         DirectButton(parent=ui, frameColor=(0, 0, 0, 0), frameSize=(-ar, ar, -1, 1), command=self.main_menu, relief=DGG.FLAT)
@@ -611,17 +711,18 @@ void main() {
         self.taskMgr.add(blink, "blink"); self.ui_enter = self.main_menu
 
     def header(self, ui, title, sub=""):
-        ar = self.getAspectRatio(); x = -ar + 2.05
+        ar = self.getAspectRatio(); x = 0; root = self.ui
         OnscreenText(parent=ui, text=title, pos=(x, 0.78), scale=0.085, fg=GOLD, align=TextNode.A_left, font=self.font)
         if sub: OnscreenText(parent=ui, text=sub, pos=(x, 0.71), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.fontp)
         xp = self.profile["xp"]; r = D.rank_of(xp); nxt = D.RANKS[r + 1][1] if r + 1 < len(D.RANKS) else xp
-        OnscreenText(parent=ui, text="%s   %d XP" % (D.RANKS[r][0], xp), pos=(ar - 0.06, 0.88), scale=0.036, fg=WHITE, align=TextNode.A_right, font=self.font)
+        OnscreenText(parent=root, text="%s   %d XP" % (D.RANKS[r][0], xp), pos=(ar - 0.06, 0.9), scale=0.035, fg=WHITE, align=TextNode.A_right, font=self.font)
         k = 1 if nxt == xp else (xp - D.RANKS[r][1]) / max(1, nxt - D.RANKS[r][1])
-        DirectFrame(parent=ui, frameColor=(0.2, 0.2, 0.18, 1), frameSize=(ar - 0.66, ar - 0.06, 0.835, 0.85))
-        DirectFrame(parent=ui, frameColor=GOLD, frameSize=(ar - 0.66, ar - 0.66 + 0.6 * k, 0.835, 0.85))
+        DirectFrame(parent=root, frameColor=(0.2, 0.2, 0.18, 1), frameSize=(ar - 0.5, ar - 0.06, 0.865, 0.875))
+        DirectFrame(parent=root, frameColor=GOLD, frameSize=(ar - 0.5, ar - 0.5 + 0.44 * k, 0.865, 0.875))
         return x
 
     def main_menu(self):
+        self._menu_fn = lambda: self.main_menu()
         ui = self.new_ui(); x = self.header(ui, "MAIN MENU", "Camp Kim  -  Kims Army training command"); cx = x + 0.4
         items = [("CAMPAIGN", self.campaign_menu), ("COKA ONLINE AI TRAINING", self.ai_menu), ("SHOOTING RANGE", lambda: self.start("range")),
                  ("LOADOUT", self.loadout_menu), ("SETTINGS", self.settings_menu), ("QUIT", self.quit_game)]
@@ -630,20 +731,22 @@ void main() {
         OnscreenText(parent=ui, text="Campaign %d / 6   |   Range best %d" % (done, self.profile.get("range_best", 0)), pos=(x, -0.5), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.fontp)
         OnscreenText(parent=ui, text="WASD move  |  Mouse aim  |  LMB fire  |  RMB aim down sights  |  Shift sprint  |  C crouch (slide while sprinting)\n"
                      "Space jump  |  R reload  |  G grenade  |  V knife  |  F use  |  1/2 weapons  |  Tab scoreboard  |  Esc pause",
-                     pos=(x, -0.62), scale=0.028, fg=DIM, align=TextNode.A_left, font=self.fontp)
+                     pos=(x, -0.62), scale=0.034, fg=DIM, align=TextNode.A_left, font=self.fontp)
         if self.upd_text: OnscreenText(parent=ui, text=self.upd_text, pos=(x, -0.8), scale=0.034, fg=GOLD, align=TextNode.A_left, font=self.font)
         self.ui_back = self.title_screen; self.ui_enter = None
 
     def campaign_menu(self):
+        self._menu_fn = lambda: self.campaign_menu()
         ui = self.new_ui(); x = self.header(ui, "CAMPAIGN", "Ana's training at Camp Kim  -  six missions")
         for i, (mid, t, sub, tod, br) in enumerate(D.MISSIONS):
             ok = i == 0 or D.MISSIONS[i - 1][0] in self.profile["done"] or os.environ.get("COKA_UNLOCK")
             done = mid in self.profile["done"]
             self.btn(ui, "%d.  %s%s" % (i + 1, t, "   [DONE]" if done else ("" if ok else "   [LOCKED]")), (lambda m=mid: self.briefing(m)), (x + 0.52, 0, 0.5 - i * 0.135), w=1.04, active=bool(ok))
-            OnscreenText(parent=ui, text=sub + ("   (night)" if tod == "night" else ("   (dusk)" if tod == "dusk" else "")), pos=(x + 1.1, 0.48 - i * 0.135), scale=0.03, fg=DIM, align=TextNode.A_left, font=self.fontp)
+            OnscreenText(parent=ui, text=sub + ("   (night)" if tod == "night" else ("   (dusk)" if tod == "dusk" else "")), pos=(x + 1.1, 0.48 - i * 0.135), scale=0.035, fg=DIM, align=TextNode.A_left, font=self.fontp)
         self.btn(ui, "BACK", self.main_menu, (x + 0.2, 0, -0.42), w=0.4); self.ui_back = self.main_menu
 
     def briefing(self, mid):
+        self._menu_fn = lambda: self.briefing(mid)
         m = [q for q in D.MISSIONS if q[0] == mid][0]; ui = self.new_ui("world"); x = self.header(ui, m[1], "BRIEFING  -  " + m[2])
         self.apply_tod(m[3]); self.render.set_shader_input("flon", 0.0)
         focus = {"m1": (60, -9), "m2": (-89, -8), "m3": (-40, 61), "m4": (0, 0), "m5": (-40, -34), "m6": (88, 66)}[mid]
@@ -664,6 +767,7 @@ void main() {
         self.ui_back = self.campaign_menu; self.ui_enter = go
 
     def ai_menu(self):
+        self._menu_fn = lambda: self.ai_menu()
         ui = self.new_ui(); x = self.header(ui, "COKA ONLINE AI TRAINING", "Bot matches on the camp map with match XP"); S = self.settings
         def setm(m): S["mode"] = m; self.ai_menu()
         def setd(d): S["diff"] = d; self.ai_menu()
@@ -681,6 +785,7 @@ void main() {
         self.ui_back = self.main_menu; self.ui_enter = g
 
     def loadout_menu(self, back=None):
+        self._menu_fn = lambda: self.loadout_menu(back)
         back = back or self.main_menu
         ui = self.new_ui(); x = self.header(ui, "LOADOUT", "Unlock weapons, attachments, camos and perks by ranking up"); pr = self.profile; rk = D.rank_of(pr["xp"])
         OnscreenText(parent=ui, text="PRIMARY", pos=(x, 0.6), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.font)
@@ -691,8 +796,8 @@ void main() {
                      (x + 0.42, 0, 0.5 - i * 0.1), w=0.84, scale=0.04, active=ok, sel=pr["primary"] == w["id"])
         w = D.W[pr["primary"]]
         OnscreenText(parent=ui, text="%s  -  %s\nDamage %d   Rate %d rpm   Mag %d   Range %d m" % (w["name"], w["cls"], w["dmg"], w["rpm"], w["mag"], w["rng"]),
-                     pos=(x, -0.03), scale=0.032, fg=WHITE, align=TextNode.A_left, font=self.fontp)
-        OnscreenText(parent=ui, text="SECONDARY: P-11 WASP", pos=(x, -0.16), scale=0.032, fg=DIM, align=TextNode.A_left, font=self.fontp)
+                     pos=(x, -0.03), scale=0.036, fg=WHITE, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text="SECONDARY: P-11 WASP", pos=(x, -0.16), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.fontp)
         ax = x + 1.0
         OnscreenText(parent=ui, text="ATTACHMENTS (%s)" % w["name"], pos=(ax, 0.6), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.font)
         cur = pr["attach"].setdefault(pr["primary"], [])
@@ -711,7 +816,7 @@ void main() {
         for i, (cid, cn, cr, pal) in enumerate(D.CAMOS):
             ok = rk >= cr
             self.btn(ui, cn if ok else "%s (%s)" % (cn, D.RANKS[cr][0]), (lambda c=cid: (pr.__setitem__("camo", c), self.loadout_menu(back))),
-                     (ax + 0.24 + (i % 2) * 0.5, 0, -0.12 - (i // 2) * 0.09), w=0.48, scale=0.028, active=ok, sel=pr["camo"] == cid)
+                     (ax + 0.24 + (i % 2) * 0.5, 0, -0.12 - (i // 2) * 0.09), w=0.48, scale=0.034, active=ok, sel=pr["camo"] == cid)
         OnscreenText(parent=ui, text="PERKS (pick 2)", pos=(x, -0.3), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.font)
         def perk(p_):
             if p_ in pr["perks"]: pr["perks"].remove(p_)
@@ -720,20 +825,21 @@ void main() {
             self.loadout_menu(back)
         for i, (pid, pn, prk, desc) in enumerate(D.PERKS):
             ok = rk >= prk
-            self.btn(ui, ("[x] " if pid in pr["perks"] else "") + pn + ("" if ok else " (%s)" % D.RANKS[prk][0]), (lambda p_=pid: perk(p_)), (x + 0.24 + (i % 3) * 0.5, 0, -0.39 - (i // 3) * 0.09), w=0.48, scale=0.028, active=ok)
+            self.btn(ui, ("[x] " if pid in pr["perks"] else "") + pn + ("" if ok else " (%s)" % D.RANKS[prk][0]), (lambda p_=pid: perk(p_)), (x + 0.24 + (i % 3) * 0.5, 0, -0.39 - (i // 3) * 0.09), w=0.48, scale=0.034, active=ok)
         sel = [p for p in D.PERKS if p[0] in pr["perks"]]
-        OnscreenText(parent=ui, text="   ".join("%s: %s" % (p[1], p[3]) for p in sel), pos=(x, -0.6), scale=0.028, fg=WHITE, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text="   ".join("%s: %s" % (p[1], p[3]) for p in sel), pos=(x, -0.6), scale=0.034, fg=WHITE, align=TextNode.A_left, font=self.fontp)
         def done(): self.save_profile(); back()
         self.btn(ui, "DONE", done, (x + 0.25, 0, -0.75), w=0.45, sel=True); self.ui_back = done
 
     def settings_menu(self, back=None):
+        self._menu_fn = lambda: self.settings_menu(back)
         back = back or self.main_menu
         ui = self.new_ui(); x = self.header(ui, "SETTINGS", "Graphics, controls and sound"); S = self.settings
         def gfx(m): S["gfx"] = m; self.save_profile(); self.settings_menu(back)
         OnscreenText(parent=ui, text="GRAPHICS", pos=(x, 0.55), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.font)
         self.btn(ui, "RTX", lambda: gfx("RTX"), (x + 0.75, 0, 0.55), w=0.45, sel=S["gfx"] == "RTX"); self.btn(ui, "EX HD", lambda: gfx("EXHD"), (x + 1.25, 0, 0.55), w=0.45, sel=S["gfx"] == "EXHD")
         OnscreenText(parent=ui, text="RTX: 4x MSAA, 16x anisotropic filtering, denser smoke and fire.  EX HD: 2x MSAA, 8x AF, lighter particles.  (Same cinematic grade, no bloom.)\nAnti-aliasing changes apply the next time you start the game.",
-                     pos=(x, 0.46), scale=0.026, fg=DIM, align=TextNode.A_left, font=self.fontp)
+                     pos=(x, 0.46), scale=0.033, fg=DIM, align=TextNode.A_left, font=self.fontp)
         def slider(lbl, key, lo, hi, y, fmt):
             OnscreenText(parent=ui, text=lbl, pos=(x, y - 0.015), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.font)
             val = OnscreenText(parent=ui, text=fmt % S[key], pos=(x + 1.7, y - 0.015), scale=0.036, fg=WHITE, align=TextNode.A_left, font=self.font, mayChange=True)
@@ -751,14 +857,15 @@ void main() {
         def upd():
             self.upd_text = None; self.check_update(); self.settings_menu(back)
         self.btn(ui, "CHECK FOR UPDATES", upd, (x + 1.25, 0, -0.22), w=0.75)
-        OnscreenText(parent=ui, text=self.upd_text or ("COKA v%s  -  you have the latest version (or no connection)." % VERSION), pos=(x, -0.34), scale=0.03, fg=WHITE, align=TextNode.A_left, font=self.fontp)
-        OnscreenText(parent=ui, text=D.FICTION + "\nVoices: Piper TTS, VCTK voices (CC BY 4.0). Engine: Panda3D. Font: Exo 2 (OFL).", pos=(x, -0.45), scale=0.026, fg=DIM, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text=self.upd_text or ("COKA v%s  -  you have the latest version (or no connection)." % VERSION), pos=(x, -0.34), scale=0.035, fg=WHITE, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text=D.FICTION + "\nVoices: Piper TTS, VCTK voices (CC BY 4.0). Engine: Panda3D. Font: Exo 2 (OFL).", pos=(x, -0.45), scale=0.033, fg=DIM, align=TextNode.A_left, font=self.fontp)
         def done(): self.save_profile(); back()
         self.btn(ui, "DONE", done, (x + 0.25, 0, -0.7), w=0.45, sel=True); self.ui_back = done
 
     def pause_menu(self):
+        self._menu_fn = self.pause_menu
         self.clear_ui(); ui = self.ui = self.aspect2d.attach_new_node("pause"); s = self.session
-        DirectFrame(parent=ui, frameColor=(0, 0, 0, 0.6), frameSize=(-3, 3, -1.2, 1.2))
+        DirectFrame(parent=ui, frameColor=(0, 0, 0, 0.6), frameSize=(-3, 3, -1.2, 1.2)); ui = self.content(0, center=True)
         OnscreenText(parent=ui, text="PAUSED", pos=(0, 0.45), scale=0.1, fg=GOLD, font=self.font)
         back_here = lambda: (self.clear_ui(), self.pause_menu())
         items = [("RESUME", lambda: self.pause(False))]
@@ -775,6 +882,7 @@ void main() {
         self.end_session(); self.start("range")
 
     def results(self, s):
+        self._menu_fn = lambda: self.results(s)
         if self.session is not s: return
         win, title = s.over; self.hud.show(False); self.hud.red.hide()
         ui = self.new_ui(); x = self.header(ui, title, {"mission": "Campaign", "tdm": "Team Deathmatch", "ffa": "Free-for-all", "range": "Range"}[s.mode])
@@ -802,6 +910,8 @@ void main() {
             {"title": self.title_screen, "main": self.main_menu, "loadout": self.loadout_menu, "brief": lambda: self.briefing("m1"), "ai": self.ai_menu,
              "settings": self.settings_menu, "campaign": self.campaign_menu}[n]()
         elif n in ("range", "tdm", "ffa"): self.start(n)
+        elif n == "pause": self.start("range"); self.taskMgr.doMethodLater(2.0, lambda t: self.pause(True), "atp")
+        elif n == "sb": self.start("tdm"); self.tab_down = True
         else: self.start("mission", n)
         if len(spec) > 1 and self.session: self.session.start_stage(int(spec[1]), restart=True)
         self.taskMgr.add(self.autotest_tick, "att"); return task.done
