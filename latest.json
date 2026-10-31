@@ -1,13 +1,13 @@
 {
-  "version": "1.0.0.1",
-  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.1",
-  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.1/COKA-Setup-1.0.0.1.exe",
-  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.1/COKA-Setup-1.0.0.1.exe",
-  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.1/COKA-1.0.0.1-Windows-x64.zip",
-  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.1/COKA-Portable.exe",
-  "sha256": "c9a3b8b6047560e0a860bfd00f01b865472427aa5517262f276ceb67ec7bdd2b",
-  "zip_sha256": "514e79e89221de28ce2a51c0f6ff1951fccb892105b5c7290157413fd227503d",
-  "portable_sha256": "d4ce3e2955daef7b716ecfe55a1c199e1829262fadcfbe73db3c570733dcfd61",
+  "version": "1.0.0.2",
+  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.2",
+  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Setup-1.0.0.2.exe",
+  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Setup-1.0.0.2.exe",
+  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-1.0.0.2-Windows-x64.zip",
+  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Portable.exe",
+  "sha256": "d296332223de329a558ab63348a3063ce5a9b14663aba8f9b0cc4caee47d83d8",
+  "zip_sha256": "1b7c67bd6e055a31396c6c81f2af450c359eb878e493b31fd3173d7cf6a747c1",
+  "portable_sha256": "c804347ad413b3bd1146174be18f454776307734ec44537d44f0dbf094b9242f",
   "released": "2026-10-31",
-  "notes": "Menus are about 70% smaller and always fit the screen (any resolution, aspect ratio or DPI scaling, with auto-fit and wheel scrolling). DPI aware, and the window fits your screen. The update check now verifies certificates against the Windows certificate store. Per-user, no admin."
+  "notes": "Removed the looping wind background sound, which crackled. Cleaner, softer explosion, empty-click and hit sounds. Per-user, no admin."
 }
