@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0",
+  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0/COKA-Setup-1.0.0.exe",
+  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0/COKA-Setup-1.0.0.exe",
+  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0/COKA-1.0.0-Windows-x64.zip",
+  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0/COKA-Portable.exe",
+  "sha256": "6979029134de195a13e50f67a4c57f83e855c9842313a6cee382c05bc26287db",
+  "zip_sha256": "95d44b1fe3ecb218e3d9f70ea8cbe2e347b994e9a034eab093e295c594cfb574",
+  "portable_sha256": "cb8f3e915ba281985243b482e9a1eb9b4668163eda701e79ce7917f68cd8641c",
+  "released": "2026-10-31",
+  "notes": "First release: a first-person army-camp training shooter with a 6-mission campaign, COKA ONLINE AI TRAINING (TDM/FFA bots), a shooting range, ranks, unlocks, and RTX/EX HD modes. Per-user, no admin."
+}
