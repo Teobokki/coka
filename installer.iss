@@ -1,4 +1,4 @@
-﻿#define MyVer "1.0.0.3"
+﻿#define MyVer "1.0.0.4"
 [Setup]
 AppId={{3B5D1D44-A7D9-4FD3-BCE1-4AF7672D7B55}
 AppName=COKA - CALL OF KIMS ARMY
@@ -7,7 +7,7 @@ AppVerName=COKA - CALL OF KIMS ARMY {#MyVer}
 AppPublisher=EX Inc./HYPERION DIGITAL
 AppPublisherURL=https://github.com/Teobokki/coka
 AppCopyright=©2026 EX Inc./HYPERION DIGITAL ©2026
-VersionInfoVersion=1.0.0.3
+VersionInfoVersion=1.0.0.4
 VersionInfoCompany=EX Inc./HYPERION DIGITAL
 VersionInfoCopyright=©2026 EX Inc./HYPERION DIGITAL ©2026
 VersionInfoProductName=COKA - CALL OF KIMS ARMY

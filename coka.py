@@ -1,8 +1,8 @@
-"""COKA - CALL OF KIMS ARMY  v1.0.0.3
-An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE AI TRAINING (bot matches).
+"""COKA - CALL OF KIMS ARMY  v1.0.0.4
+An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE (bot matches).
 ©2026 EX Inc./HYPERION DIGITAL ©2026"""
 import os, sys, json, math, random, time, threading, traceback
-VERSION = "1.0.0.3"
+VERSION = "1.0.0.4"
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 def A(*p):
     from panda3d.core import Filename
@@ -757,7 +757,7 @@ void main() {
     def main_menu(self):
         self._menu_fn = lambda: self.main_menu()
         ui = self.new_ui(); x = self.header(ui, "MAIN MENU", "Camp Kim  -  Kims Army training command"); cx = x + 0.4
-        items = [("CAMPAIGN", self.campaign_menu), ("COKA ONLINE AI TRAINING", self.ai_menu), ("SHOOTING RANGE", lambda: self.start("range")),
+        items = [("CAMPAIGN", self.campaign_menu), ("COKA ONLINE", self.ai_menu), ("SHOOTING RANGE", lambda: self.start("range")),
                  ("LOADOUT", self.loadout_menu), ("SETTINGS", self.settings_menu), ("QUIT", self.quit_game)]
         for i, (t, c) in enumerate(items): self.btn(ui, t, c, (cx + 0.12, 0, 0.36 - i * 0.125), w=0.95)
         self.apply_season_look()
@@ -808,7 +808,7 @@ void main() {
 
     def ai_menu(self):
         self._menu_fn = lambda: self.ai_menu()
-        ui = self.new_ui(); x = self.header(ui, "COKA ONLINE AI TRAINING", "Bot matches on the camp map with match XP"); S = self.settings
+        ui = self.new_ui(); x = self.header(ui, "COKA ONLINE", "Bot matches on the camp map with match XP"); S = self.settings
         def setm(m): S["mode"] = m; self.ai_menu()
         def setd(d): S["diff"] = d; self.ai_menu()
         OnscreenText(parent=ui, text="MODE", pos=(x, 0.5), scale=0.04, fg=DIM, align=TextNode.A_left, font=self.font)
