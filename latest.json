@@ -1,13 +1,13 @@
 {
-  "version": "1.0.0.3",
-  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.3",
-  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Setup-1.0.0.3.exe",
-  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Setup-1.0.0.3.exe",
-  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-1.0.0.3-Windows-x64.zip",
-  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Portable.exe",
-  "sha256": "38697c5f5e5640dbe40e562c6a2234a301db8bc6f0e9371cebb041cb81859ff4",
-  "zip_sha256": "a8faf8629b7b8dc9b7fbbca2c8999b79ef4ba3e659122dadb91be6683006d4be",
-  "portable_sha256": "34fdd31bfea3db9927040b7aa33dfdcb2dd39aa739e9cef5dc250ff763e8da05",
+  "version": "1.0.0.4",
+  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.4",
+  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Setup-1.0.0.4.exe",
+  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Setup-1.0.0.4.exe",
+  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-1.0.0.4-Windows-x64.zip",
+  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Portable.exe",
+  "sha256": "f1d8ca556d3c5f76703555ae09a22d34d498fe2782c66f64284fdeff51ce91b3",
+  "zip_sha256": "5337411e731201fa803b9ccfe74327ecd521af330b0473eb49d468ab2f849cc3",
+  "portable_sha256": "bd9de1aae6e773500cc2d69c92220aca420aa172cad0309b3505cc1b484188e6",
   "released": "2026-11-05",
-  "notes": "Rotating seasons (Spring/Summer/Autumn/Winter) on a shared 7-day UTC Monday clock. Menu countdown, camp look and light fog/stamina modifiers. Settings Force season debug (off by default). Per-user, no admin."
+  "notes": "Rename display name \"COKA ONLINE AI TRAINING\" to \"COKA ONLINE\" in menus and store copy. Offline bot TDM/FFA modes unchanged."
 }
