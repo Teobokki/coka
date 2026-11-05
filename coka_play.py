@@ -7,6 +7,7 @@ from direct.gui.DirectGui import DirectFrame
 from panda3d.core import TextNode
 import coka_data as D
 from coka_gfx import build_soldier, build_gun, blob_shadow, set_camo, set_light
+import coka_seasons as SE
 from coka_world import EDGE, build_truck
 from fs_geom import MB
 from coka_gfx import node as mbnode
@@ -449,7 +450,7 @@ class Session:
         self.ads = min(1, self.ads + dt * 7) if want_ads else max(0, self.ads - dt * 7)
         mvx = (1 if inp["d"] else 0) - (1 if inp["a"] else 0); mvy = (1 if inp["w"] else 0) - (1 if inp["s"] else 0)
         self.sprint = inp["sprint"] and mvy > 0 and self.ads < 0.3 and not p.crouch and self.sprint_stam > 0
-        if self.sprint: self.sprint_stam -= dt * (0.6 if "marathon" in app.profile["perks"] else 1)
+        if self.sprint: self.sprint_stam -= dt * (0.6 if "marathon" in app.profile["perks"] else 1) * SE.MODS.get(getattr(app, "season", "summer"), SE.MODS["summer"])["stam_drain"]
         else: self.sprint_stam = min(5.0, self.sprint_stam + dt * 0.8)
         if self.sprint and p.crouch: p.crouch = False
         spd = 7.0 if self.sprint else (2.3 if p.crouch else (2.9 if self.ads > 0.5 else 4.6))

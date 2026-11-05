@@ -9,7 +9,7 @@ ASSETS = [(f, 'assets') for f in ('assets/menu_bg.jpg', 'assets/ana_portrait.jpg
                                   'assets/THIRD_PARTY.txt')]
 ASSETS += [('assets/sfx', 'assets/sfx'), ('assets/voice', 'assets/voice'), ('assets/tex', 'assets/tex')]
 HIDDEN = ['panda3d.core', 'panda3d.direct', 'direct.showbase.ShowBase', 'direct.gui.DirectGui', 'direct.filter.FilterManager',
-          'coka_data', 'coka_gfx', 'coka_world', 'coka_play', 'fs_geom', 'numpy']
+          'coka_data', 'coka_gfx', 'coka_world', 'coka_play', 'coka_seasons', 'fs_geom', 'numpy']
 EXCL = ['matplotlib', 'scipy', 'pandas', 'IPython', 'pytest', 'tkinter', 'PIL', 'cv2', 'wx', 'PyQt5', 'imageio_ffmpeg', 'onnxruntime']
 # 1.0.0.1: verified TLS for the update check (Windows store via truststore, certifi fallback)
 HIDDEN += ['truststore', 'certifi']

@@ -285,7 +285,7 @@ class World:
         self.col(x - ex, y - ey, 0, x + ex, y + ey, z1, "metal")
 
     def finish(self):
-        T = self.tex
+        T = self.tex; self.season_nodes = {}; self.season_fx = None; self.season_id = None
         texmap = {"dirt": "dirt", "road": "dirt", "canvas": "canvas", "sandbag": "sandbag", "gabion": "gabion", "plywood": "plywood", "olive": "olive"}
         for k, mb in self.mbs.items():
             if not mb.t: continue
@@ -295,11 +295,77 @@ class World:
             if k in ("dirt", "road"): n.set_shader_input("gvar", 1.0); n.set_shader_input("tint", Vec4(1.22, 1.2, 1.16, 1) if k == "dirt" else Vec4(1.14, 1.1, 1.06, 1))
             if k == "canvas": n.set_two_sided(True)
             if k == "camo": n.set_two_sided(True); n.set_shader_input("camoscale", 2.2)
-        self.root.flatten_strong()
+            if k in ("dirt", "road", "canvas", "olive"): self.season_nodes[k] = n
+        # do not flatten dirt/road/canvas/olive so season tints can update; flatten the rest
+        keep = set(self.season_nodes.values())
+        for ch in list(self.root.get_children()):
+            if ch not in keep:
+                ch.flatten_strong()
         a = np.array([b[:6] for b in self.boxes], dtype=np.float32)
         self.B0 = a[:, 0:3].copy(); self.B1 = a[:, 3:6].copy(); self.kinds = [b[6] for b in self.boxes]
         self.dyn = []        # dynamic boxes (targets, convoy truck): list of [x0,y0,z0,x1,y1,z1,kind,owner]
         self.build_nav()
+
+    def apply_season(self, sid, rebuild=False):
+        """Retint ground/canvas and add a light seasonal overlay (blossom / heat haze tint / autumn leaves / snow). No bloom."""
+        import coka_seasons as SE
+        from panda3d.core import CardMaker, TransparencyAttrib, Vec4
+        if self.season_id == sid and not rebuild and self.season_fx is not None:
+            return
+        self.season_id = sid
+        gt = SE.GROUND[sid]; rt = SE.ROAD[sid]
+        if "dirt" in self.season_nodes:
+            self.season_nodes["dirt"].set_shader_input("tint", Vec4(*gt))
+        if "road" in self.season_nodes:
+            self.season_nodes["road"].set_shader_input("tint", Vec4(*rt))
+        if "canvas" in self.season_nodes:
+            # winter: cooler canvas; spring: slight green bounce; autumn: warmer canvas
+            ct = {"spring": (0.95, 1.05, 0.92, 1), "summer": (1.08, 1.02, 0.9, 1),
+                  "autumn": (1.12, 0.9, 0.72, 1), "winter": (1.05, 1.08, 1.15, 1)}[sid]
+            self.season_nodes["canvas"].set_shader_input("tint", Vec4(*ct))
+        if "olive" in self.season_nodes:
+            ot = {"spring": (0.85, 1.2, 0.75, 1), "summer": (1.05, 1.1, 0.8, 1),
+                  "autumn": (1.25, 0.7, 0.35, 1), "winter": (0.85, 0.9, 0.95, 1)}[sid]
+            self.season_nodes["olive"].set_shader_input("tint", Vec4(*ot))
+        if self.season_fx is not None:
+            self.season_fx.remove_node(); self.season_fx = None
+        fx = self.root.attach_new_node("season_fx"); self.season_fx = fx
+        rnd = self.rnd
+        if sid == "winter":
+            # snow patches on ground + light roof caps near HQ / tents
+            cm = CardMaker("snow"); cm.set_frame(-1, 1, -1, 1)
+            for _ in range(48):
+                x, y = rnd.uniform(-110, 110), rnd.uniform(-110, 110)
+                s = rnd.uniform(2.5, 7.0); q = fx.attach_new_node(cm.generate())
+                q.set_pos(x, y, 0.04); q.set_scale(s, 1, s * 0.7); q.set_p(-90)
+                q.set_color(0.92, 0.95, 1.0, 0.72); q.set_transparency(TransparencyAttrib.M_alpha)
+                q.set_bin("transparent", 20); q.set_depth_write(False); q.set_light_off(1); q.set_shader_off(1)
+            for (x, y, s) in ((0, 0, 5.5), (-66, 52, 3.2), (-40, 61, 3.5), (80, 50, 3.0), (94, 72, 3.0)):
+                q = fx.attach_new_node(cm.generate()); q.set_pos(x, y, 2.7); q.set_scale(s, 1, s * 0.55); q.set_p(-90)
+                q.set_color(0.95, 0.97, 1.0, 0.85); q.set_transparency(TransparencyAttrib.M_alpha)
+                q.set_bin("transparent", 22); q.set_depth_write(False); q.set_light_off(1); q.set_shader_off(1)
+        elif sid == "spring":
+            cm = CardMaker("blossom"); cm.set_frame(-0.15, 0.15, -0.15, 0.15)
+            for _ in range(60):
+                x, y = rnd.uniform(-90, 90), rnd.uniform(-90, 90); z = rnd.uniform(1.5, 5.5)
+                q = fx.attach_new_node(cm.generate()); q.set_pos(x, y, z); q.set_billboard_point_eye()
+                q.set_color(1.0, 0.72, 0.82, 0.75); q.set_transparency(TransparencyAttrib.M_alpha)
+                q.set_bin("transparent", 25); q.set_depth_write(False); q.set_light_off(1); q.set_shader_off(1)
+        elif sid == "autumn":
+            cm = CardMaker("leaf"); cm.set_frame(-0.18, 0.18, -0.12, 0.12)
+            for _ in range(55):
+                x, y = rnd.uniform(-100, 100), rnd.uniform(-100, 100); z = rnd.uniform(0.05, 4.5)
+                q = fx.attach_new_node(cm.generate()); q.set_pos(x, y, z); q.set_h(rnd.uniform(0, 360)); q.set_billboard_point_eye()
+                q.set_color(0.85, 0.35, 0.08, 0.8); q.set_transparency(TransparencyAttrib.M_alpha)
+                q.set_bin("transparent", 25); q.set_depth_write(False); q.set_light_off(1); q.set_shader_off(1)
+        elif sid == "summer":
+            # subtle dry heat haze cards near horizon (low alpha, no glow)
+            cm = CardMaker("haze"); cm.set_frame(-40, 40, 0, 8)
+            for a in range(0, 360, 45):
+                rad = math.radians(a); x, y = 160 * math.cos(rad), 160 * math.sin(rad)
+                q = fx.attach_new_node(cm.generate()); q.set_pos(x, y, 0.5); q.look_at(0, 0, 2)
+                q.set_color(1.0, 0.9, 0.65, 0.07); q.set_transparency(TransparencyAttrib.M_alpha)
+                q.set_bin("transparent", 5); q.set_depth_write(False); q.set_light_off(1); q.set_shader_off(1)
 
     # -- queries ------------------------------------------------------------------------------------------------------
     def ray(self, o, d, maxd):

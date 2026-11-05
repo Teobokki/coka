@@ -8,6 +8,7 @@ An army-camp training shooter from EX Inc./HYPERION DIGITAL. You play **Ana**, a
 - **Shooting range** with pop-up targets.
 - **RPG progression**: 11 ranks (Recruit to Commander), unlockable fictional weapons, attachments, digital camos and perks.
 - **Graphics**: RTX and EX HD modes, golden-hour camp with real sun shadows, dust haze with sun in-scattering, filmic grade and grain (no bloom).
+- **Rotating seasons**: Spring / Summer / Autumn / Winter rotate every 7 days on a shared UTC Monday clock (Forza-style). Menu shows the current season and a countdown; camp look, grade, sky and light fog change; light training modifiers (e.g. Winter fog, Summer stamina). Settings has a debug Force season override (off by default).
 
 Controls: WASD move (A left, D right), mouse aim, LMB fire, RMB aim down sights, Shift sprint, C / Ctrl crouch (slide while sprinting), Space jump,
 R reload, G grenade, V knife, F use, 1/2 or wheel switch weapon, L helmet light (night), Tab scoreboard, Esc pause.

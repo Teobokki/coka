@@ -1,8 +1,8 @@
-"""COKA - CALL OF KIMS ARMY  v1.0.0.2
+"""COKA - CALL OF KIMS ARMY  v1.0.0.3
 An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE AI TRAINING (bot matches).
 ©2026 EX Inc./HYPERION DIGITAL ©2026"""
 import os, sys, json, math, random, time, threading, traceback
-VERSION = "1.0.0.2"
+VERSION = "1.0.0.3"
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 def A(*p):
     from panda3d.core import Filename
@@ -42,7 +42,7 @@ try:
 except Exception: _SSL_TS = None
 def _ssl_contexts(): return [c for c in (_SSL_TS, _SSL_FB) if c is not None] or [ssl.create_default_context()]
 DEFAULT = dict(xp=0, primary="km9", attach={}, camo="desert", perks=["quickhands", "marathon"], done=[], range_best=0,
-               settings=dict(gfx="", sens=1.0, fov=80, vol=0.8, voice=1.0, fullscreen=False, diff=1, mode="tdm"))
+               settings=dict(gfx="", sens=1.0, fov=80, vol=0.8, voice=1.0, fullscreen=False, diff=1, mode="tdm", force_season=""))
 def load_profile():
     p = json.loads(json.dumps(DEFAULT))
     try:
@@ -89,6 +89,7 @@ from direct.gui.OnscreenImage import OnscreenImage
 import coka_gfx as G
 from coka_world import World, EDGE
 import coka_play as P
+import coka_seasons as SE
 
 GV = """#version 120
 attribute vec4 p3d_Vertex; attribute vec2 p3d_MultiTexCoord0; uniform mat4 p3d_ModelViewProjectionMatrix; varying vec2 uv;
@@ -269,7 +270,7 @@ class App(ShowBase):
         # viewmodel scene (own camera so the gun never clips into walls)
         self.vmroot = NodePath("vm"); self.vmpos = PTA_LVecBase3f([Vec3(0)]); G.setup_render(self.vmroot, self.vmpos)
         self.vmroot.set_shader_input("envmap", self.tex["sky"]); self.render.set_shader_input("envmap", self.tex["sky"])
-        self.setup_shadows(); self.apply_tod("golden")
+        self.setup_shadows(); self.season, self.season_s0, self.season_s1, self.season_forced = SE.resolve(self.settings); self.apply_tod("golden"); self.apply_season_look(rebuild=True)
         self.vmcam = Camera("vmcam"); self.vml = PerspectiveLens(); self.vml.set_fov(68); self.vml.set_near_far(0.01, 10); self.vmcam.set_lens(self.vml)
         self.vmcamnp = self.vmroot.attach_new_node(self.vmcam); self.vm = None; self.vm_t = {}; self.vm_k = 0
         self.gtime = PTA_float([0.0]); self.setup_grade()
@@ -322,8 +323,39 @@ void main() {
     def apply_tod(self, tod):
         G.set_light(self.render, tod, self); G.set_light(self.vmroot, tod, self); self.vmroot.set_shader_input("fogden", 0.0); self.tod = tod
         z, h, sc, hz = self.SKYS[tod]; L = G.LIGHTS[tod]
+        sid = getattr(self, "season", None) or SE.resolve(self.settings)[0]
+        st = SE.SKY_TINT[sid]; lm = SE.LIGHT_MUL[sid]
+        z, h, sc, hz = SE.mul3(z, st["zen"]), SE.mul3(h, st["hor"]), SE.mul3(sc, st["sunc"]), SE.mul3(hz, st["haze"])
         for k, v in (("zen", z), ("hor", h), ("sunc", sc), ("haze", hz), ("sundir", L[0])): self.skynp.set_shader_input(k, Vec3(*v), 10)
         self.sun_dir = Vec3(*L[0]); self.sun_dir.normalize()
+        # season light/fog on top of tod (keep vm fog off)
+        sc2 = SE.mul3(L[1], lm[0]); st2 = SE.mul3(L[2], lm[1]); sb2 = SE.mul3(L[3], lm[2]); fc2 = SE.mul3(L[4], lm[3])
+        fd2 = L[5] * lm[4] * SE.MODS[sid]["fog_mul"]
+        et2 = SE.mul3(L[6], lm[5])
+        for root in (self.render,):
+            root.set_shader_input("suncol", Vec3(*sc2)); root.set_shader_input("skytop", Vec3(*st2))
+            root.set_shader_input("skybot", Vec3(*sb2)); root.set_shader_input("fogcol", Vec3(*fc2))
+            root.set_shader_input("fogden", fd2); root.set_shader_input("envtint", Vec3(*et2))
+        self.set_background_color(*fc2, 1)
+        if getattr(self, "gq", None) is not None:
+            try: self.gq.set_shader_input("warm", SE.MODS[sid]["warm"])
+            except Exception: pass
+
+    def apply_season_look(self, rebuild=False):
+        """Refresh season from UTC (or force override), retint camp, optional snow/blossom overlay, grade warm."""
+        sid, s0, s1, forced = SE.resolve(self.settings)
+        self.season, self.season_s0, self.season_s1, self.season_forced = sid, s0, s1, forced
+        self.world.apply_season(sid, rebuild=rebuild)
+        if getattr(self, "gq", None) is not None:
+            try: self.gq.set_shader_input("warm", SE.MODS[sid]["warm"])
+            except Exception: pass
+        if getattr(self, "tod", None):
+            self.apply_tod(self.tod)
+
+    def season_line(self):
+        sid = self.season; cd, _ = SE.countdown(self.season_s1)
+        force = "  [FORCE]" if self.season_forced else ""
+        return "%s%s   |   next %s in %s" % (SE.NAMES[sid], force, SE.next_name(sid), cd), SE.SCOL[sid], SE.LABELS[sid]
 
     def setup_shadows(self):
         from panda3d.core import DirectionalLight, BitMask32
@@ -545,9 +577,11 @@ void main() {
     # ------------------------------------------------------------------------------------------- session control
     def start(self, mode, mission=None):
         self.clear_ui(); pass
+        self.apply_season_look()
         self.session = P.Session(self, mode, mission, self.settings.get("diff", 1))
         self.flycam = None; self.grab_mouse(not TEST); self.ui_back = None; self.ui_enter = None
         if mode == "mission": self.hud.banner([m for m in D.MISSIONS if m[0] == mission][0][1], self.session.objective, 3.0)
+        else: self.hud.banner(SE.MODS[self.season]["banner"], SE.LABELS[self.season], 2.6)
         if not TEST or os.environ.get("COKA_INTRO"):
             self.intro = dict(t=0.0, dur=4.2); self.hud.show(False); [b.show() for b in self.bars]; self.keys_pressed = set()
             m = [q for q in D.MISSIONS if q[0] == mission][0] if mode == "mission" else None
@@ -725,7 +759,14 @@ void main() {
         ui = self.new_ui(); x = self.header(ui, "MAIN MENU", "Camp Kim  -  Kims Army training command"); cx = x + 0.4
         items = [("CAMPAIGN", self.campaign_menu), ("COKA ONLINE AI TRAINING", self.ai_menu), ("SHOOTING RANGE", lambda: self.start("range")),
                  ("LOADOUT", self.loadout_menu), ("SETTINGS", self.settings_menu), ("QUIT", self.quit_game)]
-        for i, (t, c) in enumerate(items): self.btn(ui, t, c, (cx + 0.12, 0, 0.42 - i * 0.14), w=0.95)
+        for i, (t, c) in enumerate(items): self.btn(ui, t, c, (cx + 0.12, 0, 0.36 - i * 0.125), w=0.95)
+        self.apply_season_look()
+        line, scol, sub = self.season_line()
+        OnscreenText(parent=ui, text=line, pos=(x, 0.62), scale=0.038, fg=scol, align=TextNode.A_left, font=self.font)
+        OnscreenText(parent=ui, text=sub, pos=(x, 0.56), scale=0.028, fg=DIM, align=TextNode.A_left, font=self.fontp)
+        # seasonal menu grade wash over the poster
+        mg = SE.MENU_GRADE[self.season]; ar = self.getAspectRatio(); pl = self.panel_left()
+        DirectFrame(parent=self.ui, frameColor=mg, frameSize=(-ar - 0.1, pl, -1.1, 1.1))
         done = len(self.profile["done"])
         OnscreenText(parent=ui, text="Campaign %d / 6   |   Range best %d" % (done, self.profile.get("range_best", 0)), pos=(x, -0.5), scale=0.036, fg=DIM, align=TextNode.A_left, font=self.fontp)
         OnscreenText(parent=ui, text="WASD move  |  Mouse aim  |  LMB fire  |  RMB aim down sights  |  Shift sprint  |  C crouch (slide while sprinting)\n"
@@ -857,9 +898,17 @@ void main() {
             self.upd_text = None; self.check_update(); self.settings_menu(back)
         self.btn(ui, "CHECK FOR UPDATES", upd, (x + 1.25, 0, -0.22), w=0.75)
         OnscreenText(parent=ui, text=self.upd_text or ("COKA v%s  -  you have the latest version (or no connection)." % VERSION), pos=(x, -0.34), scale=0.035, fg=WHITE, align=TextNode.A_left, font=self.fontp)
-        OnscreenText(parent=ui, text=D.FICTION + "\nVoices: Piper TTS, VCTK voices (CC BY 4.0). Engine: Panda3D. Font: Exo 2 (OFL).", pos=(x, -0.45), scale=0.033, fg=DIM, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text="FORCE SEASON (debug, off by default)", pos=(x, -0.42), scale=0.033, fg=DIM, align=TextNode.A_left, font=self.font)
+        cur = (S.get("force_season") or "") or "off"
+        def force(v):
+            S["force_season"] = v; self.save_profile(); self.apply_season_look(rebuild=True); self.settings_menu(back)
+        for i, (lab, val) in enumerate([("OFF", ""), ("SPRING", "spring"), ("SUMMER", "summer"), ("AUTUMN", "autumn"), ("WINTER", "winter")]):
+            self.btn(ui, lab, (lambda v=val: force(v)), (x + 0.22 + i * 0.38, 0, -0.5), w=0.36, scale=0.034, sel=(cur == (val or "off")))
+        OnscreenText(parent=ui, text="Seasons rotate every 7 days UTC (Mon 00:00). All players share the same season. " + SE.LABELS[self.season],
+                     pos=(x, -0.58), scale=0.030, fg=DIM, align=TextNode.A_left, font=self.fontp)
+        OnscreenText(parent=ui, text=D.FICTION + "\nVoices: Piper TTS, VCTK voices (CC BY 4.0). Engine: Panda3D. Font: Exo 2 (OFL).", pos=(x, -0.68), scale=0.030, fg=DIM, align=TextNode.A_left, font=self.fontp)
         def done(): self.save_profile(); back()
-        self.btn(ui, "DONE", done, (x + 0.25, 0, -0.7), w=0.45, sel=True); self.ui_back = done
+        self.btn(ui, "DONE", done, (x + 0.25, 0, -0.82), w=0.45, sel=True); self.ui_back = done
 
     def pause_menu(self):
         self._menu_fn = self.pause_menu
