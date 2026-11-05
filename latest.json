@@ -1,13 +1,13 @@
 {
-  "version": "1.0.0.2",
-  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.2",
-  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Setup-1.0.0.2.exe",
-  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Setup-1.0.0.2.exe",
-  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-1.0.0.2-Windows-x64.zip",
-  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.2/COKA-Portable.exe",
-  "sha256": "d296332223de329a558ab63348a3063ce5a9b14663aba8f9b0cc4caee47d83d8",
-  "zip_sha256": "1b7c67bd6e055a31396c6c81f2af450c359eb878e493b31fd3173d7cf6a747c1",
-  "portable_sha256": "c804347ad413b3bd1146174be18f454776307734ec44537d44f0dbf094b9242f",
-  "released": "2026-10-31",
-  "notes": "Removed the looping wind background sound, which crackled. Cleaner, softer explosion, empty-click and hit sounds. Per-user, no admin."
+  "version": "1.0.0.3",
+  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.3",
+  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Setup-1.0.0.3.exe",
+  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Setup-1.0.0.3.exe",
+  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-1.0.0.3-Windows-x64.zip",
+  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.3/COKA-Portable.exe",
+  "sha256": "38697c5f5e5640dbe40e562c6a2234a301db8bc6f0e9371cebb041cb81859ff4",
+  "zip_sha256": "a8faf8629b7b8dc9b7fbbca2c8999b79ef4ba3e659122dadb91be6683006d4be",
+  "portable_sha256": "34fdd31bfea3db9927040b7aa33dfdcb2dd39aa739e9cef5dc250ff763e8da05",
+  "released": "2026-11-05",
+  "notes": "Rotating seasons (Spring/Summer/Autumn/Winter) on a shared 7-day UTC Monday clock. Menu countdown, camp look and light fog/stamina modifiers. Settings Force season debug (off by default). Per-user, no admin."
 }
