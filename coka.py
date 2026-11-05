@@ -1,8 +1,8 @@
-"""COKA - CALL OF KIMS ARMY  v1.0.0.4
+"""COKA - CALL OF KIMS ARMY  v1.0.0.5
 An army-camp training shooter: campaign with Ana, a shooting range and COKA ONLINE (bot matches).
 ©2026 EX Inc./HYPERION DIGITAL ©2026"""
 import os, sys, json, math, random, time, threading, traceback
-VERSION = "1.0.0.4"
+VERSION = "1.0.0.5"
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 def A(*p):
     from panda3d.core import Filename
@@ -289,7 +289,7 @@ class App(ShowBase):
         for b in self.bars: b.hide()
         self.taskMgr.add(self.flycam_task, "flycam")
         if TEST: self.taskMgr.do_method_later(0.5, self.autotest_start, "at")
-        else: self.title_screen()
+        else: self.main_menu()
 
     # ------------------------------------------------------------------------------------------- render setup
     SKYV = """#version 120
@@ -773,7 +773,7 @@ void main() {
                      "Space jump  |  R reload  |  G grenade  |  V knife  |  F use  |  1/2 weapons  |  Tab scoreboard  |  Esc pause",
                      pos=(x, -0.62), scale=0.034, fg=DIM, align=TextNode.A_left, font=self.fontp)
         if self.upd_text: OnscreenText(parent=ui, text=self.upd_text, pos=(x, -0.8), scale=0.034, fg=GOLD, align=TextNode.A_left, font=self.font)
-        self.ui_back = self.title_screen; self.ui_enter = None
+        self.ui_back = None; self.ui_enter = None
 
     def campaign_menu(self):
         self._menu_fn = lambda: self.campaign_menu()
