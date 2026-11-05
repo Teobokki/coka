@@ -1,13 +1,13 @@
 {
-  "version": "1.0.0.4",
-  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.4",
-  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Setup-1.0.0.4.exe",
-  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Setup-1.0.0.4.exe",
-  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-1.0.0.4-Windows-x64.zip",
-  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.4/COKA-Portable.exe",
-  "sha256": "f1d8ca556d3c5f76703555ae09a22d34d498fe2782c66f64284fdeff51ce91b3",
-  "zip_sha256": "5337411e731201fa803b9ccfe74327ecd521af330b0473eb49d468ab2f849cc3",
-  "portable_sha256": "bd9de1aae6e773500cc2d69c92220aca420aa172cad0309b3505cc1b484188e6",
+  "version": "1.0.0.5",
+  "release_url": "https://github.com/Teobokki/coka/releases/tag/v1.0.0.5",
+  "url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.5/COKA-Setup-1.0.0.5.exe",
+  "installer_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.5/COKA-Setup-1.0.0.5.exe",
+  "full_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.5/COKA-1.0.0.5-Windows-x64.zip",
+  "portable_url": "https://github.com/Teobokki/coka/releases/download/v1.0.0.5/COKA-Portable.exe",
+  "sha256": "ae5236897abb87d0671d0cfde05695ca4400feb99958598d996cd508490ef0c5",
+  "zip_sha256": "21fa7428e4e31234bd1e492b1c1927384eb1203ffb8fe9ec1fbc906983bc852e",
+  "portable_sha256": "15a3581b5229e9072139ae70d99498cb391046d2956a2aa8c224f7a623e5f0fc",
   "released": "2026-11-05",
-  "notes": "Rename display name \"COKA ONLINE AI TRAINING\" to \"COKA ONLINE\" in menus and store copy. Offline bot TDM/FFA modes unchanged."
+  "notes": "Skip press-start / splash title screen; launch lands straight on the main menu. Poster remains the menu background."
 }
